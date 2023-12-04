@@ -1,0 +1,130 @@
+**&---------------------------------------------------------------------*
+**& Report Z_MALZEME_RAPORU
+**&---------------------------------------------------------------------*
+**&
+**&---------------------------------------------------------------------*
+REPORT z_malzeme_raporu.
+
+DATA: bos(40)     TYPE c,
+      lang        TYPE lang VALUE 'TR',
+      lang2       TYPE lang VALUE 'EN',
+      malzeme(40) TYPE c VALUE 'Malzeme',
+      yaratan(12) TYPE c VALUE 'Yaratan',
+      malzemet(4) TYPE c VALUE 'Türü',
+      tanimtr(40) TYPE c VALUE 'TR Tanım',
+      tanimen(40) TYPE c VALUE 'ENG Tanım',
+      n           TYPE i VALUE 2,
+      trtanim(40) TYPE c,
+      entanim(40) TYPE c,
+      gv_line     TYPE string,
+      kontrol(40) TYPE c.
+
+
+
+TABLES: mara,
+        makt.
+
+TYPES: BEGIN OF ty_data ,
+         matnr    TYPE  mara-matnr,  "Malzeme
+         ernam    TYPE  mara-ernam,  "Yaratan
+         mtart    TYPE  mara-mtart,  "Malzeme Türü
+         maktx    TYPE  makt-maktx,  "Tanım "tr
+         maktx_en TYPE  makt-maktx , "eng tanim
+         ersda    TYPE  mara-ersda,
+         matnr2   TYPE  makt-matnr,
+         spras    TYPE  makt-spras.  "Language
+
+TYPES END OF ty_data.
+
+TYPES tt_data TYPE STANDARD TABLE OF ty_data WITH DEFAULT KEY.
+
+DATA: gs_data  TYPE ty_data,
+      gt_data  TYPE tt_data,
+      gt_data2 TYPE tt_data.
+"gt_result TYPE TABLE OF string.
+
+
+
+SELECTION-SCREEN BEGIN OF BLOCK blok1 WITH FRAME TITLE title1.
+
+SELECT-OPTIONS: s_matnr  FOR mara-matnr,
+                s_ernam  FOR mara-ernam,
+                s_mtart FOR  mara-mtart,
+                s_maktx  FOR makt-maktx,
+                s_ersda  FOR mara-ersda.
+
+SELECTION-SCREEN END OF BLOCK blok1.
+
+START-OF-SELECTION.
+
+  PERFORM get_material_main CHANGING gt_data[].
+  PERFORM write_main_table TABLES gt_data[].
+
+FORM get_material_main CHANGING gt_data TYPE tt_data.
+
+
+  SELECT  a~matnr, a~ernam, a~mtart, b~maktx, a~ersda, b~spras , c~maktx AS maktx_en
+  FROM mara AS a
+  LEFT OUTER JOIN makt AS b ON a~matnr = b~matnr AND b~spras = 'T'
+
+  LEFT OUTER JOIN makt AS c ON a~matnr = c~matnr AND c~spras = 'E'
+
+                                                WHERE a~matnr   IN @s_matnr AND
+                                                       a~ernam  IN @s_ernam  AND
+                                                       a~mtart  IN @s_mtart  AND
+                                                       b~maktx  IN @s_maktx AND
+                                                       a~ersda  IN @s_ersda
+
+   ORDER BY a~matnr
+   INTO CORRESPONDING FIELDS OF TABLE @gt_data.
+
+ENDFORM.
+
+FORM write_main_table TABLES gt_data TYPE tt_data.
+  WRITE: sy-uline(152).
+  WRITE: / sy-vline, malzeme, sy-vline,yaratan,sy-vline,malzemet,
+  sy-vline,tanimtr,sy-vline,tanimen, sy-vline.
+  WRITE: sy-uline(152).
+
+*  READ TABLE gt_data INTO gs_data-matnr INDEX 2.
+*  kontrol = gs_data-matnr.
+
+  LOOP AT gt_data INTO gs_data.
+    " IF gs_data-spras = lang . "and gs_data-matnr <> kontrol.
+
+    FORMAT RESET INTENSIFIED OFF COLOR COL_TOTAL.
+    WRITE:  / sy-vline,(40)gs_data-matnr,sy-vline.
+
+    FORMAT RESET INTENSIFIED OFF COLOR COL_HEADING.
+    WRITE:  (12)gs_data-ernam,sy-vline.
+
+    FORMAT RESET INTENSIFIED ON COLOR COL_POSITIVE.
+    WRITE:  (4)gs_data-mtart,sy-vline.
+
+    FORMAT RESET INTENSIFIED OFF COLOR COL_KEY.
+    WRITE:  (40)gs_data-maktx,sy-vline.
+
+*    FORMAT RESET INTENSIFIED OFF COLOR COL_GROUP.
+*    WRITE:  bos(40),sy-vline.
+
+    " ELSEIF gs_data-spras = lang2. " and gs_data-matnr = kontrol.
+
+    "CLEAR gs_data-maktx.
+    " gs_data-maktx_en  = gs_data-maktx.
+    FORMAT RESET INTENSIFIED OFF COLOR COL_GROUP.
+    WRITE:  gs_data-maktx_en(40),sy-vline.
+
+    "    ENDIF.
+*    n = n + 1.
+*
+*    READ TABLE gt_data INTO gs_data-matnr INDEX n.
+*    kontrol = gs_data-matnr.
+
+*    CONCATENATE  gs_data-matnr '|' gs_data-ernam '|' gs_data-mtart '|' gs_data-maktx '|' gs_data-maktx_en '|' INTO gs_data SEPARATED BY space.
+*
+*    APPEND gs_data TO gt_data2.
+*
+*    SPLIT gv_line AT '|' INTO: gs_data-matnr gs_data-ernam gs_data-mtart gs_data-maktx gs_data-maktx_en.
+  ENDLOOP.
+  WRITE: sy-uline(152).
+ENDFORM.
